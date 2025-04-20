@@ -28,6 +28,7 @@ data/
 *.xls
 *.txt
 *.dat
+.zip
 
 # Virtual Environment
 venv/
@@ -39,4 +40,14 @@ ENV/
 .vscode/
 *.swp
 .DS_Store
+
+# test files
+test.py
+
+#trained tokenizers
+trained_tokenizers/
+
+#bash scripts
+bash_scripts/
+logs/
 
