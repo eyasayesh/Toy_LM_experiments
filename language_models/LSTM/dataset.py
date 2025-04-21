@@ -16,7 +16,8 @@ class TokenDataset(Dataset):
         self.tokens = [t for t in self.tokens if t != -1]  # filter out any unknowns if needed
 
     def __len__(self):
-        return len(self.tokens) - self.seq_len
+        return max(0, len(self.tokens) - self.seq_len)
+
 
     def __getitem__(self, idx):
         x = self.tokens[idx:idx + self.seq_len]

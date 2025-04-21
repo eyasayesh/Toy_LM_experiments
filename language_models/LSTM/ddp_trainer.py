@@ -91,7 +91,7 @@ def train(rank, world_size, text, tokenizer_fn, vocab_size, seq_len, batch_size,
                 
                 total_loss += loss.item()
                 
-                if rank == 0 and batch_idx % 100 == 0:
+                if rank == 0 and batch_idx % 10 == 0:
                     avg_loss = total_loss / (batch_idx + 1)
                     print(f"Epoch {epoch}, Batch {batch_idx}, Loss: {avg_loss:.4f}")
                     wandb.log({"loss": avg_loss})

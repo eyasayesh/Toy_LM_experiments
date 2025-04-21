@@ -68,6 +68,7 @@ def main():
 
     with open(args.data_path, "r") as f:
         text = f.read()[:100_000]  # Optional truncation for faster testing
+        print(text[:1000])
 
     tokenizer_fn, vocab_size = get_tokenizer(args.tokenizer, args.tokenizer_loc)
 
