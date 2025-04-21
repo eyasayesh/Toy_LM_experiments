@@ -1,4 +1,5 @@
 import os
+from time import time
 from analysis import estimate_gb_mutual_information, compute_mutual_information, mutual_info_plot
 from custom_tokenizers import (
     CharTokenizer, WordTokenizer, BPETokenizer,
@@ -7,10 +8,10 @@ from custom_tokenizers import (
 
 TOKENIZER_MAP = {
     "char": CharTokenizer,
-    "word": WordTokenizer,
-    "bpe": BPETokenizer,
-    "uniform": UniformPairTokenizer,
-    "freq": FreqWeightedTokenizer,
+    #"word": WordTokenizer,
+    #"bpe": BPETokenizer,
+    #"uniform": UniformPairTokenizer,
+    #"freq": FreqWeightedTokenizer,
     # "anti_bpe": AntiBPETokenizer  # optional
 }
 
@@ -48,16 +49,21 @@ for file_name in os.listdir(TOKENIZER_DIR):
         # Compute mutual information using both methods
         d_vals = list(range(1, 101))
         
-        # Grassberger MI
+        """ # Grassberger MI
+        start_time = time()
         mi_grassberger = estimate_gb_mutual_information(tokens, d_vals)
         d_gb, mi_gb = zip(*mi_grassberger)
+        print("GB duration is ", time()-start_time, " seconds")"""
+
 
         # Top-K filtered MI
+        start_time = time()
         d_topk, mi_topk = compute_mutual_information(tokens, max_distance=100, top_k=500)
+        print("compute_mutual_information duration is ", time()-start_time ," seconds")
 
         # Plot both methods using the built-in function
         tokenizer_name = file_name.replace('.json', '')
-        mutual_info_plot(d_gb, mi_gb, tokenizer_name, SAVE_DIR)
+        #mutual_info_plot(d_gb, mi_gb, tokenizer_name, SAVE_DIR)
         mutual_info_plot(d_topk, mi_topk, f"{tokenizer_name}_topk", SAVE_DIR)
 
         print(f"✅ Saved MI plots for {tokenizer_name}")

@@ -30,112 +30,63 @@ def get_zipf(tokenizer, text: str, plot: bool = False, tokenizer_name: str = "",
     freqs = np.array(sorted_freqs)
     token_ids = np.array(sorted_token_ids)
 
+    name = tokenizer_name.lower()
+    if name == "char":
+        mask = np.ones_like(token_ids)
+    elif name == "word":
+        mask = token_ids != 1
+    else:
+        mask = token_ids >= 5
+
     if plot:
-        zipf_plot(ranks, freqs, tokenizer_name, out_dir=out_dir)
+        zipf_plot(ranks[mask], freqs[mask], tokenizer_name, out_dir=out_dir)
 
-    return token_ids, ranks, freqs
+    return token_ids[mask], ranks[mask], freqs[mask]
+import numpy as np
+from collections import Counter
+from scipy.special import digamma
 
-def grassberger_entropy(counts: Counter) -> float:
-    """
-    Grassberger entropy estimator for a histogram.
-    
-    Args:
-        counts: Counter object with counts
-        
-    Returns:
-        Estimated entropy
-    """
+def grassberger_entropy(counts):
+    """Grassberger entropy estimator."""
     N = sum(counts.values())
     if N == 0:
         return 0.0
-    entropy = np.log(N) - (1.0 / N) * sum(n * digamma(n) for n in counts.values())
-    return entropy
+    return np.log(N) - (1.0 / N) * sum(n * digamma(n) for n in counts.values())
 
-def estimate_gb_mutual_information(tokens: List[int], d_values: List[int], num_samples: int = 10000) -> List[Tuple[int, float]]:
+def compute_mutual_information(tokens, max_distance=10, num_samples=None):
     """
-    Estimate mutual information between tokens at different distances using Grassberger estimator.
-    
+    Compute MI decay for distances d = 1 to max_distance.
     Args:
-        tokens: List of token IDs
-        d_values: List of distances to compute MI for
-        num_samples: Number of samples to use for estimation
-        
+        tokens (List[int]): Tokenized sequence.
+        max_distance (int): Max separation distance.
+        num_samples (int or None): Subsample size for efficiency.
     Returns:
-        List of (distance, mutual_information) tuples
+        List[float]: Mutual information for each distance.
     """
-    if not tokens:
-        raise ValueError("Empty token list")
-    if not d_values:
-        raise ValueError("Empty distance list")
-    if num_samples <= 0:
-        raise ValueError("num_samples must be positive")
-        
-    results = []
-    max_d = max(d_values)
-    
-    if max_d >= len(tokens):
-        raise ValueError(f"Maximum distance {max_d} exceeds token sequence length {len(tokens)}")
+    N = len(tokens)
+    if num_samples is None:
+        num_samples = N
 
-    # Pre-compute all possible pairs for efficiency
-    all_pairs = [(tokens[i], tokens[i + d]) for d in d_values for i in range(len(tokens) - d)]
-    
-    for d in d_values:
-        # Filter pairs for current distance
-        d_pairs = [(x, y) for i, (x, y) in enumerate(all_pairs) if i % len(d_values) == d_values.index(d)]
-        
-        # Sample if needed
-        if len(d_pairs) > num_samples:
-            d_pairs = random.sample(d_pairs, num_samples)
-            
-        # Build histograms
-        joint_counts = Counter(d_pairs)
-        x_counts = Counter(x for x, _ in d_pairs)
-        y_counts = Counter(y for _, y in d_pairs)
+    tokens = np.array(tokens)
+    mi_results = []
 
-        # Estimate entropies
+    for d in range(1, max_distance + 1):
+        if d >= N:
+            break
+
+        indices = np.random.choice(N - d, min(num_samples, N - d), replace=False)
+        x = tokens[indices]
+        y = tokens[indices + d]
+
+        pairs = list(zip(x, y))
+        joint_counts = Counter(pairs)
+        x_counts = Counter(x)
+        y_counts = Counter(y)
+
         H_x = grassberger_entropy(x_counts)
         H_y = grassberger_entropy(y_counts)
         H_xy = grassberger_entropy(joint_counts)
+        mi = H_x + H_y - H_xy
+        mi_results.append(mi)
 
-        # Mutual Information
-        I_xy = H_x + H_y - H_xy
-        results.append((d, I_xy))
-
-    return results
-
-def compute_mutual_information(tokens, max_distance=100, top_k=500):
-    print("Token count:", len(tokens))
-    token_counts = Counter(tokens)
-    total = sum(token_counts.values())
-
-    # Restrict to top-K tokens for efficiency
-    top_tokens = set([tok for tok, _ in token_counts.most_common(top_k)])
-
-    px = {tok: count / total for tok, count in token_counts.items() if tok in top_tokens}
-
-    mi_by_distance = []
-
-    for d in range(1, max_distance + 1):
-        pair_counts = Counter()
-        valid = 0
-
-        for i in range(len(tokens) - d):
-            x, y = tokens[i], tokens[i + d]
-            if x in top_tokens and y in top_tokens:
-                pair_counts[(x, y)] += 1
-                valid += 1
-
-        if valid == 0:
-            mi_by_distance.append(0)
-            continue
-
-        mi = 0.0
-        for (x, y), count in pair_counts.items():
-            pxy = count / valid
-            if pxy == 0 or px[x] == 0 or px[y] == 0:
-                continue
-            mi += pxy * np.log2(pxy / (px[x] * px[y]))
-
-        mi_by_distance.append(mi)
-
-    return mi_by_distance
+    return mi_results
