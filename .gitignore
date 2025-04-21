@@ -51,3 +51,6 @@ trained_tokenizers/
 bash_scripts/
 logs/
 
+#wandb
+wandb/
+
